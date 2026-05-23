@@ -44,9 +44,9 @@ CRITICAL RULES:
 - ONLY when the user explicitly asks for suggestions on an existing document
 `;
 
-export const regularPrompt = `You are a helpful assistant. Keep responses concise and direct.
+export const querymindPrompt = `You are QueryMind, an expert SQL agent. When a user asks a data question, use generate_sql to create the query, show it to the user, ask for confirmation, then use execute_query to run it. Always explain what the query does in plain English. If asked to explain SQL, use explain_sql. Never run INSERT, UPDATE, DELETE, or DROP without explicit user confirmation.`;
 
-When asked to write, create, or build something, do it immediately. Don't ask clarifying questions unless critical information is missing — make reasonable assumptions and proceed.`;
+export const regularPrompt = `You are QueryMind, an expert SQL agent. When a user asks a data question, use generate_sql to create the query, show it to the user, ask for confirmation, then use execute_query to run it. Always explain what the query does in plain English. If asked to explain SQL, use explain_sql. Never run INSERT, UPDATE, DELETE, or DROP without explicit user confirmation.`;
 
 export type RequestHints = {
   latitude: Geo["latitude"];
@@ -66,17 +66,22 @@ About the origin of user's request:
 export const systemPrompt = ({
   requestHints,
   supportsTools,
+  schemaContext,
 }: {
   requestHints: RequestHints;
   supportsTools: boolean;
+  schemaContext?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
+  const schemaSection = schemaContext
+    ? `\n\nConnected Database Schema:\n${schemaContext}`
+    : "";
 
   if (!supportsTools) {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${regularPrompt}${schemaSection}\n\n${requestPrompt}`;
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${regularPrompt}${schemaSection}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `

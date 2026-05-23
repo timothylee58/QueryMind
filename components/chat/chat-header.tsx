@@ -1,11 +1,10 @@
 "use client";
 
-import { PanelLeftIcon } from "lucide-react";
+import { DatabaseIcon, PanelLeftIcon } from "lucide-react";
 import Link from "next/link";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
-import { VercelIcon } from "./icons";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
 
 function PureChatHeader({
@@ -35,12 +34,11 @@ function PureChatHeader({
       </Button>
 
       <Link
-        className="flex size-8 items-center justify-center rounded-lg md:hidden"
-        href="https://vercel.com/templates/next.js/chatbot"
-        rel="noopener noreferrer"
-        target="_blank"
+        className="flex items-center gap-1.5 rounded-lg md:hidden"
+        href="/"
       >
-        <VercelIcon size={14} />
+        <DatabaseIcon className="size-4 text-primary" />
+        <span className="text-sm font-semibold">QueryMind</span>
       </Link>
 
       {!isReadonly && (
@@ -50,19 +48,10 @@ function PureChatHeader({
         />
       )}
 
-      <Button
-        asChild
-        className="hidden rounded-lg bg-foreground px-4 text-background hover:bg-foreground/90 md:ml-auto md:flex"
-      >
-        <Link
-          href="https://vercel.com/templates/next.js/chatbot"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <VercelIcon size={16} />
-          Deploy with Vercel
-        </Link>
-      </Button>
+      <div className="hidden items-center gap-1.5 md:ml-auto md:flex">
+        <DatabaseIcon className="size-4 text-primary" />
+        <span className="text-sm font-semibold">QueryMind</span>
+      </div>
     </header>
   );
 }

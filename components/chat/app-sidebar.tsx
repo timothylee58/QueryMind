@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  MessageSquareIcon,
+  DatabaseIcon,
   PanelLeftIcon,
   PenSquareIcon,
   TrashIcon,
@@ -74,10 +74,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <SidebarMenuButton
                   asChild
                   className="size-8 !px-0 items-center justify-center group-data-[collapsible=icon]:group-hover/logo:opacity-0"
-                  tooltip="Chatbot"
+                  tooltip="QueryMind"
                 >
                   <Link href="/" onClick={() => setOpenMobile(false)}>
-                    <MessageSquareIcon className="size-4 text-sidebar-foreground/50" />
+                    <DatabaseIcon className="size-4 text-primary" />
                   </Link>
                 </SidebarMenuButton>
                 <Tooltip>
