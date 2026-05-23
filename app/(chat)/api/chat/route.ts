@@ -22,6 +22,9 @@ import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
 import { editDocument } from "@/lib/ai/tools/edit-document";
+import { executeQuery } from "@/lib/ai/tools/execute-query";
+import { explainSql } from "@/lib/ai/tools/explain-sql";
+import { generateSql } from "@/lib/ai/tools/generate-sql";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
@@ -68,8 +71,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, messages, selectedChatModel, selectedVisibilityType } =
-      requestBody;
+    const {
+      id,
+      message,
+      messages,
+      selectedChatModel,
+      selectedVisibilityType,
+      schemaContext,
+    } = requestBody;
 
     const [, session] = await Promise.all([
       checkBotId().catch(() => null),
@@ -193,7 +202,7 @@ export async function POST(request: Request) {
       execute: async ({ writer: dataStream }) => {
         const result = streamText({
           model: getLanguageModel(chatModel),
-          system: systemPrompt({ requestHints, supportsTools }),
+          system: systemPrompt({ requestHints, supportsTools, schemaContext }),
           messages: modelMessages,
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -205,6 +214,9 @@ export async function POST(request: Request) {
                   "editDocument",
                   "updateDocument",
                   "requestSuggestions",
+                  "generateSql",
+                  "executeQuery",
+                  "explainSql",
                 ],
           providerOptions: {
             ...(modelConfig?.gatewayOrder && {
@@ -232,6 +244,9 @@ export async function POST(request: Request) {
               dataStream,
               modelId: chatModel,
             }),
+            generateSql,
+            executeQuery,
+            explainSql,
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,

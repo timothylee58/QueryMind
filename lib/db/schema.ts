@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   pgTable,
   primaryKey,
@@ -134,3 +135,17 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const queryHistory = pgTable("QueryHistory", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  question: text("question").notNull(),
+  generatedSql: text("generatedSql").notNull(),
+  rowCount: integer("rowCount").notNull().default(0),
+  executionMs: integer("executionMs").notNull().default(0),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type QueryHistory = InferSelectModel<typeof queryHistory>;
