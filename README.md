@@ -1,147 +1,176 @@
 # QueryMind
 
-**QueryMind** is a natural language SQL agent built on Next.js and the Vercel AI SDK. Connect any Postgres database, ask questions in plain English, review the generated SQL, confirm it, and get results as interactive tables or charts — all inside a conversational interface.
-
----
-
-## How it works
+Natural language SQL agent — ask questions in plain English, get results from your PostgreSQL database.
 
 ```
-User question
-     │
-     ▼
-generate_sql ──► SQL + explanation shown in SqlPreview
-                        │
-               User clicks "Run Query"
-                        │
-                        ▼
-               execute_query ──► QueryResult (table / bar / line chart)
-                        │
-                        ▼
-               saveQueryHistory (audit trail)
+┌─────────────────────────────────────────────────────────────────┐
+│                         Architecture                            │
+│                                                                 │
+│  User Browser                                                   │
+│      │                                                          │
+│      ▼                                                          │
+│  Cloudflare CDN  ──►  Vercel (Next.js frontend)                │
+│                              │                                  │
+│                              │  POST /query                     │
+│                              ▼                                  │
+│                    AWS App Runner (FastAPI)                     │
+│                    ┌──────────────────────┐                     │
+│                    │  Rate limit (20/min) │                     │
+│                    │  Cache lookup        │◄──► Upstash Redis   │
+│                    │  NL → SQL (Claude)   │                     │
+│                    │  Execute query       │◄──► User's Postgres │
+│                    │  Cache write         │                     │
+│                    └──────────────────────┘                     │
+└─────────────────────────────────────────────────────────────────┘
 ```
-
-1. **Connect** — paste a Postgres connection string into the DB Connect modal. It is validated with `SELECT 1` and held only in React state — never persisted.
-2. **Ask** — type a question in plain English. The AI calls `generate_sql`, producing SQL and a plain-English explanation.
-3. **Review** — the `SqlPreview` component displays the SQL in a syntax-highlighted code block. Write operations (INSERT / UPDATE / DELETE / DROP) get a warning badge.
-4. **Confirm** — click **Run Query**. The `execute_query` tool fires only when `confirmed: true`.
-5. **Explore** — results appear in `QueryResult` as a scrollable data table. If the data is numeric and ≤ 100 rows, toggle to a bar or line chart.
-
----
 
 ## Features
 
-- **Natural language to SQL** — powered by the Vercel AI SDK `streamText` with custom tools
-- **Schema explorer** — collapsible sidebar listing every table and column in the connected database's `public` schema
-- **SQL confirmation gate** — write operations are blocked until the user explicitly confirms
-- **Result visualisation** — recharts bar/line chart toggle for numeric result sets
-- **Query history** — every successful query is saved to the `QueryHistory` table with question, SQL, row count, and execution time
-- **Session-scoped connections** — connection strings are never stored in the application database
-- **Auth & rate limiting** — Auth.js authentication with per-user hourly message limits
-- **Resumable streams** — Redis-backed resumable streaming for long-running queries
+- Natural language → SQL via Claude (`claude-haiku-4-5`)
+- SELECT-only enforcement with 500-row cap and 10-second timeout
+- Upstash Redis response cache (TTL 3600s)
+- Rate limiting: 20 requests/minute per IP
+- Session-scoped DB connections — connection strings never stored server-side
+- Schema explorer, SQL preview with copy, paginated result table
+- PWA-ready Vue 3 dashboard (`frontend/`)
 
-### Stack
+## Quick Start (Local)
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | [Next.js 16](https://nextjs.org) App Router |
-| AI | [Vercel AI SDK](https://ai-sdk.dev) + AI Gateway |
-| UI | [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS v4](https://tailwindcss.com) |
-| Charts | [Recharts](https://recharts.org) |
-| App database | [Neon Serverless Postgres](https://vercel.com/marketplace/neon) + [Drizzle ORM](https://orm.drizzle.team) |
-| Auth | [Auth.js v5](https://authjs.dev) |
-| File storage | [Vercel Blob](https://vercel.com/storage/blob) |
-
----
-
-## AI tools
-
-| Tool | Description |
-|------|-------------|
-| `generate_sql` | Converts a natural language question + schema context into SQL and an explanation |
-| `execute_query` | Runs SQL against the user's database; requires `confirmed: true` |
-| `explain_sql` | Returns a plain-English breakdown of any SQL query |
-
----
-
-## Project structure
-
-```
-app/
-  (auth)/               Auth.js routes and config
-  (chat)/
-    api/chat/           Streaming chat route — SQL tools registered here
-    api/chat/schema.ts  Zod schema for POST body (includes schemaContext)
-  actions/
-    validate-connection.ts   SELECT 1 health check for user-supplied DB
-    save-query.ts            Saves query history after execution
-
-components/
-  schema-explorer.tsx   Collapsible table/column sidebar
-  sql-preview.tsx       SQL code block with Run / Cancel buttons
-  query-result.tsx      Data table + recharts chart toggle
-  db-connect-modal.tsx  Dialog for entering a Postgres connection string
-
-lib/
-  ai/
-    prompts.ts          QueryMind system prompt + schemaContext injection
-    tools/
-      generate-sql.ts
-      execute-query.ts
-      explain-sql.ts
-  db/
-    connection.ts       getTargetDbClient, getSchemaContext, getSchemaStructured
-    schema.ts           Drizzle schema — includes QueryHistory table
-    migrations/
-      0001_query_history.sql
-```
-
----
-
-## Running locally
-
-Copy the example env file and fill in your values:
+**Prerequisites:** Docker, pnpm ≥ 9, Python 3.11
 
 ```bash
-cp .env.example .env.local
-```
-
-Required environment variables:
-
-| Variable | Description |
-|----------|-------------|
-| `POSTGRES_URL` | Neon (or any Postgres) URL for the application database |
-| `AUTH_SECRET` | Random secret for Auth.js — generate with `openssl rand -base64 32` |
-| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (not needed on Vercel — OIDC is automatic) |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token for file uploads |
-| `REDIS_URL` | _(optional)_ Redis URL for resumable stream support |
-
-Install dependencies and run migrations:
-
-```bash
+# 1. Clone and install
+git clone https://github.com/timothylee58/querymind.git
+cd querymind
 pnpm install
-pnpm db:migrate   # creates all tables including QueryHistory
+
+# 2. Configure backend
+cp backend/.env.example backend/.env  # fill in real values
+
+# 3. Start backend + Redis
+docker compose up -d
+
+# 4. Start Next.js frontend
 pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
----
+## Environment Variables
 
-## Connecting a database
+### Backend (`backend/.env`)
 
-QueryMind works with any Postgres-compatible database. Your connection string is validated at connect time with `SELECT 1` and held only in React component state for the duration of your browser session — it is never written to the application database.
+| Variable | Required | Description |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | ✅ | Anthropic API key |
+| `UPSTASH_REDIS_REST_URL` | ✅ | Upstash Redis REST endpoint |
+| `UPSTASH_REDIS_REST_TOKEN` | ✅ | Upstash Redis REST token |
+| `ALLOWED_ORIGINS` | ✅ | Comma-separated CORS origins |
+| `ENV` | — | `development` \| `production` (default: `production`) |
+
+> **Never commit real credentials.** `backend/.env` contains placeholder values only.
+
+### Frontend (Vercel environment variables)
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | FastAPI base URL (e.g. `https://api.querymind.com`) |
+| `AUTH_SECRET` | Next-Auth secret |
+| `POSTGRES_URL` | Drizzle ORM connection string (query history) |
+
+## API Reference
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Service health check |
+| `GET` | `/schema?schema_name=public` | List tables and columns |
+| `POST` | `/query` | Generate and execute NL query |
+
+### POST /query
+
+```json
+// Request
+{
+  "nl_query": "Show me the 10 most recent users",
+  "connection_string": "postgresql://...",
+  "schema_name": "public"
+}
+
+// Response
+{
+  "sql": "SELECT * FROM users ORDER BY created_at DESC LIMIT 10",
+  "results": [...],
+  "row_count": 10,
+  "execution_time_ms": 42.1,
+  "cached": false
+}
+```
+
+## Security
+
+- **SELECT-only**: regex + asyncpg readonly transaction block DML/DDL
+- **Row cap**: LIMIT 500 injected if query has no LIMIT or exceeds 500
+- **Timeout**: `statement_timeout = 10000ms` per connection
+- **Rate limit**: 20 requests/minute per IP via slowapi
+- **Error sanitization**: raw PostgreSQL errors never exposed to client
+- **No stored credentials**: connection strings are request-scoped, never persisted
+
+## Deployment
+
+### Frontend → Vercel
+
+1. Import repo in Vercel dashboard
+2. Set `NEXT_PUBLIC_API_URL` to your App Runner URL
+3. Push to `main` triggers auto-deploy
+
+### Backend → AWS App Runner
+
+1. Create ECR repository named `querymind-backend`
+2. Add GitHub secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+3. Create App Runner service pointing to ECR repo
+4. Add App Runner env vars from the backend table above
+5. Push to `main` — CI builds Docker image, pushes to ECR, triggers redeploy
+
+### Upstash Redis
+
+1. Create a Redis database at [upstash.com](https://upstash.com)
+2. Copy REST URL and token into App Runner env vars
+
+### Cloudflare CDN (optional)
+
+Point your domain's DNS to the Vercel deployment URL via a CNAME record, then proxy through Cloudflare for caching and DDoS protection.
+
+## Project Structure
 
 ```
-postgresql://user:password@host:5432/database
+querymind/
+├── app/                    # Next.js App Router pages + API routes
+├── components/
+│   └── chat/               # ChatWindow, MessageBubble, SqlPreview, QueryResultTable, SchemaSelector
+├── lib/
+│   ├── api.ts              # FastAPI client (generateQuery, getSchema)
+│   └── ai/tools/           # generate-sql, execute-query, explain-sql AI tools
+├── types/                  # Shared TypeScript interfaces
+├── backend/                # FastAPI Python service
+│   ├── app/
+│   │   ├── api/routes/     # /health, /schema, /query
+│   │   ├── core/           # asyncpg pool, Upstash Redis cache
+│   │   └── services/       # nl_to_sql, sql_executor, schema_inspector
+│   └── tests/              # pytest (6 tests)
+├── frontend/               # Vue 3 + Pinia + PWA dashboard
+├── docker-compose.yml      # Local dev: backend + Redis
+└── .github/workflows/      # backend.yml, frontend.yml CI/CD
 ```
 
-After connecting, the schema explorer automatically loads all tables and columns from the `public` schema and injects them into the AI system prompt so the model always knows your schema.
+## Running Tests
 
----
+```bash
+# Backend
+cd backend && pytest -v
 
-## Deploy
+# Frontend type check
+pnpm tsc --noEmit
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/timothylee58/QueryMind)
-
-Set the environment variables listed above in your Vercel project settings before deploying.
+# Next.js build
+pnpm build
+```
