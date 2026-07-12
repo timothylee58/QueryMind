@@ -32,7 +32,11 @@ export const useSearchStore = defineStore('search', () => {
     }
     history.value.unshift(entry)
     if (history.value.length > 50) history.value = history.value.slice(0, 50)
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.value))
+    } catch (e) {
+      console.warn('Failed to save history to localStorage:', e)
+    }
   }
 
   function clearHistory() {

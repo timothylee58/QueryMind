@@ -14,6 +14,7 @@ export function ChatWindow() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [schema, setSchema] = useState("public");
+  const [connectionString, setConnectionString] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   function scrollToBottom() {
@@ -23,7 +24,7 @@ export function ChatWindow() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const question = input.trim();
-    if (!question || loading) return;
+    if (!question || loading || !connectionString.trim()) return;
 
     const userMsg: Message = { id: nanoid(), role: "user", content: question };
     setMessages((prev) => [...prev, userMsg]);
@@ -32,7 +33,7 @@ export function ChatWindow() {
     scrollToBottom();
 
     try {
-      const res = await generateQuery(question, schema);
+      const res = await generateQuery(question, connectionString, schema);
       const assistantMsg: Message = {
         id: nanoid(),
         role: "assistant",
@@ -97,30 +98,42 @@ export function ChatWindow() {
       </div>
 
       {/* Input bar */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 border-t border-border bg-background px-4 py-3"
-        aria-label="Query input"
-      >
-        <SchemaSelector value={schema} onChange={setSchema} />
+      <div className="border-t border-border bg-background px-4 pt-3 pb-1">
         <input
-          className="flex-1 rounded-lg border border-input bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-          placeholder="Ask a question about your data…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          className="w-full rounded-lg border border-input bg-muted/30 px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 mb-2"
+          placeholder="PostgreSQL connection string (postgresql://user:pass@host/db)"
+          value={connectionString}
+          onChange={(e) => setConnectionString(e.target.value)}
           disabled={loading}
-          aria-label="Natural language query"
+          aria-label="Database connection string"
           autoComplete="off"
+          type="password"
         />
-        <Button
-          type="submit"
-          size="icon-sm"
-          disabled={!input.trim() || loading}
-          aria-label="Send query"
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 pb-2"
+          aria-label="Query input"
         >
-          <SendIcon className="size-4" />
-        </Button>
-      </form>
+          <SchemaSelector value={schema} onChange={setSchema} />
+          <input
+            className="flex-1 rounded-lg border border-input bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            placeholder="Ask a question about your data…"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={loading || !connectionString.trim()}
+            aria-label="Natural language query"
+            autoComplete="off"
+          />
+          <Button
+            type="submit"
+            size="icon-sm"
+            disabled={!input.trim() || loading || !connectionString.trim()}
+            aria-label="Send query"
+          >
+            <SendIcon className="size-4" />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

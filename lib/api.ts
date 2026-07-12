@@ -27,11 +27,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function generateQuery(
   nlQuery: string,
+  connectionString: string,
   schemaName = 'public'
 ): Promise<QueryResponse> {
   return apiFetch<QueryResponse>('/query', {
     method: 'POST',
-    body: JSON.stringify({ nl_query: nlQuery, schema_name: schemaName } satisfies QueryRequest),
+    body: JSON.stringify({
+      nl_query: nlQuery,
+      connection_string: connectionString,
+      schema_name: schemaName,
+    } satisfies QueryRequest),
   })
 }
 

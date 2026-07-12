@@ -47,6 +47,7 @@ export function useApi() {
           selectedChatModel: 'default',
           selectedVisibilityType: 'private',
           schemaContext: params.schemaContext,
+          connectionString: params.connectionString,
         }),
       })
 
@@ -103,7 +104,7 @@ function extractResultFromDataItem(item: unknown, question: string): SearchResul
   const obj = item as Record<string, unknown>
 
   // Look for execute_query tool result shape
-  if ('rows' in obj && 'columns' in obj && Array.isArray(obj.rows)) {
+  if ('rows' in obj && 'columns' in obj && Array.isArray(obj.rows) && Array.isArray(obj.columns)) {
     return {
       rows: obj.rows as Record<string, unknown>[],
       columns: obj.columns as string[],

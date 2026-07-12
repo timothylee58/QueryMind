@@ -5,7 +5,13 @@ import type { SchemaTable } from '@/types'
 const STORAGE_KEY = 'qm_connection'
 
 export const useConnectionStore = defineStore('connection', () => {
-  const connectionString = ref(sessionStorage.getItem(STORAGE_KEY) ?? '')
+  const connectionString = ref((() => {
+    try {
+      return sessionStorage.getItem(STORAGE_KEY) ?? ''
+    } catch {
+      return ''
+    }
+  })())
   const connected = ref(false)
   const schema = ref<SchemaTable[]>([])
   const error = ref<string | null>(null)

@@ -1,5 +1,6 @@
 export interface QueryRequest {
   nl_query: string
+  connection_string: string
   schema_name?: string
 }
 
