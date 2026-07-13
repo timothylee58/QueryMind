@@ -1,4 +1,11 @@
-import type { QueryRequest, QueryResponse, SchemaResponse } from '@/types'
+import type {
+  ExecuteRequest,
+  GenerateRequest,
+  GenerateResponse,
+  QueryRequest,
+  QueryResponse,
+  SchemaResponse,
+} from '@/types'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 
@@ -25,6 +32,34 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** Step 1: translate NL to SQL without executing. */
+export async function generateSql(
+  nlQuery: string,
+  connectionString: string,
+  schemaName = 'public'
+): Promise<GenerateResponse> {
+  return apiFetch<GenerateResponse>('/generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      nl_query: nlQuery,
+      connection_string: connectionString,
+      schema_name: schemaName,
+    } satisfies GenerateRequest),
+  })
+}
+
+/** Step 2: execute a user-confirmed SQL statement. */
+export async function executeSql(
+  sql: string,
+  connectionString: string
+): Promise<QueryResponse> {
+  return apiFetch<QueryResponse>('/execute', {
+    method: 'POST',
+    body: JSON.stringify({ sql, connection_string: connectionString } satisfies ExecuteRequest),
+  })
+}
+
+/** One-shot: generate + execute (for non-interactive callers). */
 export async function generateQuery(
   nlQuery: string,
   connectionString: string,

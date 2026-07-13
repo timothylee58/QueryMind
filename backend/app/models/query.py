@@ -4,7 +4,24 @@ from typing import Any
 
 class QueryRequest(BaseModel):
     nl_query: str = Field(..., min_length=1, max_length=2000, description="Natural language question")
+    connection_string: str = Field(..., min_length=1, description="PostgreSQL connection string")
     schema_name: str = Field(default="public", max_length=64, pattern=r"^[a-zA-Z0-9_]+$")
+
+
+class GenerateRequest(BaseModel):
+    nl_query: str = Field(..., min_length=1, max_length=2000)
+    connection_string: str = Field(..., min_length=1)
+    schema_name: str = Field(default="public", max_length=64, pattern=r"^[a-zA-Z0-9_]+$")
+
+
+class GenerateResponse(BaseModel):
+    sql: str
+    cached: bool
+
+
+class ExecuteRequest(BaseModel):
+    sql: str = Field(..., min_length=1, max_length=10000)
+    connection_string: str = Field(..., min_length=1)
 
 
 class QueryResponse(BaseModel):
