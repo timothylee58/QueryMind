@@ -1,0 +1,21 @@
+version: 1.0
+runtime: DOCKER
+build:
+  commands:
+    build:
+      - echo "Using pre-built Docker image from ECR"
+run:
+  command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+  network:
+    port: 8000
+    env: APP_PORT
+  env:
+    - name: ENV
+      value: production
+  healthCheckConfiguration:
+    protocol: HTTP
+    path: /health
+    interval: 10
+    timeout: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 3
