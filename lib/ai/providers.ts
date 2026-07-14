@@ -1,30 +1,26 @@
-import { customProvider, gateway } from "ai";
-import { isTestEnvironment } from "../constants";
-import { titleModel } from "./models";
+import Anthropic from "@anthropic-ai/sdk";
+import { DEFAULT_CHAT_MODEL, titleModel } from "./models";
 
-export const myProvider = isTestEnvironment
-  ? (() => {
-      const { chatModel, titleModel } = require("./models.mock");
-      return customProvider({
-        languageModels: {
-          "chat-model": chatModel,
-          "title-model": titleModel,
-        },
-      });
-    })()
-  : null;
+export const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
-export function getLanguageModel(modelId: string) {
-  if (isTestEnvironment && myProvider) {
-    return myProvider.languageModel(modelId);
-  }
-
-  return gateway.languageModel(modelId);
+/** Return the model ID to use for the main chat. */
+export function getLanguageModelId(modelId?: string): string {
+  return modelId ?? DEFAULT_CHAT_MODEL;
 }
 
+/** Return the model ID to use for title generation. */
+export function getTitleModelId(): string {
+  return titleModel.id;
+}
+
+/** @deprecated Use getLanguageModelId instead */
+export function getLanguageModel(modelId: string) {
+  return modelId;
+}
+
+/** @deprecated Use getTitleModelId instead */
 export function getTitleModel() {
-  if (isTestEnvironment && myProvider) {
-    return myProvider.languageModel("title-model");
-  }
-  return gateway.languageModel(titleModel.id);
+  return titleModel.id;
 }

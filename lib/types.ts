@@ -1,5 +1,5 @@
-import type { InferUITool, UIMessage } from "ai";
 import { z } from "zod";
+import type { InferUITool, UIMessage } from "@/lib/ai/ai-types";
 import type { ArtifactKind } from "@/components/chat/artifact";
 import type { createDocument } from "./ai/tools/create-document";
 import type { getWeather } from "./ai/tools/get-weather";

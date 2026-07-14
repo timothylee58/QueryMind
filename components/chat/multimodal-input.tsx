@@ -1,7 +1,6 @@
 "use client";
 
-import type { UseChatHelpers } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
+import type { UIMessage, UseChatHelpers } from "@/lib/ai/ai-types";
 import equal from "fast-deep-equal";
 import {
   ArrowUpIcon,

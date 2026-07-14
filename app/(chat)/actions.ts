@@ -1,18 +1,17 @@
 "use server";
 
-import { generateText, type UIMessage } from "ai";
 import { cookies } from "next/headers";
 import { auth } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/chat/visibility-selector";
-import { titleModel } from "@/lib/ai/models";
 import { titlePrompt } from "@/lib/ai/prompts";
-import { getTitleModel } from "@/lib/ai/providers";
+import { anthropic, getTitleModelId } from "@/lib/ai/providers";
 import {
   deleteMessagesByChatIdAfterTimestamp,
   getChatById,
   getMessageById,
   updateChatVisibilityById,
 } from "@/lib/db/queries";
+import type { UIMessage } from "@/lib/ai/ai-types";
 import { getTextFromMessage } from "@/lib/utils";
 
 export async function saveChatModelAsCookie(model: string) {
@@ -25,14 +24,18 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
-  const { text } = await generateText({
-    model: getTitleModel(),
+  const response = await anthropic.messages.create({
+    model: getTitleModelId(),
+    max_tokens: 100,
     system: titlePrompt,
-    prompt: getTextFromMessage(message),
-    providerOptions: {
-      gateway: { order: titleModel.gatewayOrder },
-    },
+    messages: [
+      { role: "user", content: getTextFromMessage(message) },
+    ],
   });
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  const text = textBlock?.type === "text" ? textBlock.text : "";
+
   return text
     .replace(/^[#*"\s]+/, "")
     .replace(/["]+$/, "")

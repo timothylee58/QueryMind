@@ -1,6 +1,5 @@
-import { tool, type UIMessageStreamWriter } from "ai";
 import type { Session } from "next-auth";
-import { z } from "zod";
+import type { UIMessageStreamWriter } from "@/lib/ai/ai-types";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
 import { getDocumentById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
@@ -11,43 +10,51 @@ type UpdateDocumentProps = {
   modelId: string;
 };
 
-export const updateDocument = ({
+export type UpdateDocumentInput = {
+  id: string;
+  description?: string;
+};
+
+export function updateDocument({
   session,
   dataStream,
   modelId,
-}: UpdateDocumentProps) =>
-  tool({
-    description:
-      "Full rewrite of an existing artifact. Only use for major changes where most content needs replacing. Prefer editDocument for targeted changes.",
-    inputSchema: z.object({
-      id: z.string().describe("The ID of the artifact to rewrite"),
-      description: z
-        .string()
-        .default("Improve the content")
-        .describe("The description of changes that need to be made"),
-    }),
-    execute: async ({ id, description }) => {
+}: UpdateDocumentProps) {
+  return {
+    definition: {
+      name: "updateDocument" as const,
+      description:
+        "Full rewrite of an existing artifact. Only use for major changes where most content needs replacing. Prefer editDocument for targeted changes.",
+      input_schema: {
+        type: "object" as const,
+        properties: {
+          id: {
+            type: "string",
+            description: "The ID of the artifact to rewrite",
+          },
+          description: {
+            type: "string",
+            description: "The description of changes that need to be made",
+          },
+        },
+        required: ["id"],
+      },
+    },
+    execute: async ({ id, description = "Improve the content" }: UpdateDocumentInput) => {
       const document = await getDocumentById({ id });
 
       if (!document) {
-        return {
-          error: "Document not found",
-        };
+        return { error: "Document not found" };
       }
 
       if (document.userId !== session.user?.id) {
         return { error: "Forbidden" };
       }
 
-      dataStream.write({
-        type: "data-clear",
-        data: null,
-        transient: true,
-      });
+      dataStream.write({ type: "data-clear", data: null, transient: true });
 
       const documentHandler = documentHandlersByArtifactKind.find(
-        (documentHandlerByArtifactKind) =>
-          documentHandlerByArtifactKind.kind === document.kind
+        (h) => h.kind === document.kind,
       );
 
       if (!documentHandler) {
@@ -74,4 +81,5 @@ export const updateDocument = ({
             : "The document has been updated successfully.",
       };
     },
-  });
+  };
+}

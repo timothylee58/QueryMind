@@ -1,12 +1,9 @@
-import { tool } from "ai";
-import { z } from "zod";
-
 async function geocodeCity(
-  city: string
+  city: string,
 ): Promise<{ latitude: number; longitude: number } | null> {
   try {
     const response = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
     );
 
     if (!response.ok) {
@@ -29,50 +26,64 @@ async function geocodeCity(
   }
 }
 
-export const getWeather = tool({
-  description:
-    "Get the current weather at a location. You can provide either coordinates or a city name.",
-  inputSchema: z.object({
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-    city: z
-      .string()
-      .describe("City name (e.g., 'San Francisco', 'New York', 'London')")
-      .optional(),
-  }),
-  execute: async (input) => {
-    let latitude: number;
-    let longitude: number;
+export type GetWeatherInput = {
+  latitude?: number;
+  longitude?: number;
+  city?: string;
+};
 
-    if (input.city) {
-      const coords = await geocodeCity(input.city);
-      if (!coords) {
-        return {
-          error: `Could not find coordinates for "${input.city}". Please check the city name.`,
-        };
-      }
-      latitude = coords.latitude;
-      longitude = coords.longitude;
-    } else if (input.latitude !== undefined && input.longitude !== undefined) {
-      latitude = input.latitude;
-      longitude = input.longitude;
-    } else {
+export async function executeGetWeather(input: GetWeatherInput) {
+  let latitude: number;
+  let longitude: number;
+
+  if (input.city) {
+    const coords = await geocodeCity(input.city);
+    if (!coords) {
       return {
-        error:
-          "Please provide either a city name or both latitude and longitude coordinates.",
+        error: `Could not find coordinates for "${input.city}". Please check the city name.`,
       };
     }
+    latitude = coords.latitude;
+    longitude = coords.longitude;
+  } else if (input.latitude !== undefined && input.longitude !== undefined) {
+    latitude = input.latitude;
+    longitude = input.longitude;
+  } else {
+    return {
+      error:
+        "Please provide either a city name or both latitude and longitude coordinates.",
+    };
+  }
 
-    const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`
-    );
+  const response = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`,
+  );
 
-    const weatherData = await response.json();
+  const weatherData = await response.json();
 
-    if ("city" in input) {
-      weatherData.cityName = input.city;
-    }
+  if ("city" in input) {
+    weatherData.cityName = input.city;
+  }
 
-    return weatherData;
+  return weatherData;
+}
+
+export const getWeather = {
+  definition: {
+    name: "getWeather" as const,
+    description:
+      "Get the current weather at a location. You can provide either coordinates or a city name.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        latitude: { type: "number", description: "Latitude coordinate" },
+        longitude: { type: "number", description: "Longitude coordinate" },
+        city: {
+          type: "string",
+          description: "City name (e.g., 'San Francisco', 'New York', 'London')",
+        },
+      },
+    },
   },
-});
+  execute: executeGetWeather,
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import type { DynamicToolUIPart, ToolUIPart } from "ai";
+import type { DynamicToolUIPart, NamedToolUIPart, ToolUIPart } from "@/lib/ai/ai-types";
 import type { ComponentProps, ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,7 @@ export const Tool = ({ className, ...props }: ToolProps) => (
   />
 );
 
-export type ToolPart = ToolUIPart | DynamicToolUIPart;
+export type ToolPart = ToolUIPart | DynamicToolUIPart | NamedToolUIPart;
 
 export type ToolHeaderProps = {
   title?: string;
@@ -43,6 +43,7 @@ export type ToolHeaderProps = {
       state: DynamicToolUIPart["state"];
       toolName: string;
     }
+  | { type: NamedToolUIPart["type"]; state: NamedToolUIPart["state"]; toolName?: never }
 );
 
 const statusLabels: Record<ToolPart["state"], string> = {

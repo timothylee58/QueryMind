@@ -1,6 +1,5 @@
-import { smoothStream, streamText } from "ai";
 import { updateDocumentPrompt } from "@/lib/ai/prompts";
-import { getLanguageModel } from "@/lib/ai/providers";
+import { anthropic, getLanguageModelId } from "@/lib/ai/providers";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 
 export const textDocumentHandler = createDocumentHandler<"text">({
@@ -8,20 +7,23 @@ export const textDocumentHandler = createDocumentHandler<"text">({
   onCreateDocument: async ({ title, dataStream, modelId }) => {
     let draftContent = "";
 
-    const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+    const stream = anthropic.messages.stream({
+      model: getLanguageModelId(modelId),
+      max_tokens: 8096,
       system:
         "Write about the given topic. Markdown is supported. Use headings wherever appropriate.",
-      experimental_transform: smoothStream({ chunking: "word" }),
-      prompt: title,
+      messages: [{ role: "user", content: title }],
     });
 
-    for await (const delta of fullStream) {
-      if (delta.type === "text-delta") {
-        draftContent += delta.text;
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        draftContent += event.delta.text;
         dataStream.write({
           type: "data-textDelta",
-          data: delta.text,
+          data: event.delta.text,
           transient: true,
         });
       }
@@ -32,19 +34,22 @@ export const textDocumentHandler = createDocumentHandler<"text">({
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
 
-    const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+    const stream = anthropic.messages.stream({
+      model: getLanguageModelId(modelId),
+      max_tokens: 8096,
       system: updateDocumentPrompt(document.content, "text"),
-      experimental_transform: smoothStream({ chunking: "word" }),
-      prompt: description,
+      messages: [{ role: "user", content: description }],
     });
 
-    for await (const delta of fullStream) {
-      if (delta.type === "text-delta") {
-        draftContent += delta.text;
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        draftContent += event.delta.text;
         dataStream.write({
           type: "data-textDelta",
-          data: delta.text,
+          data: event.delta.text,
           transient: true,
         });
       }

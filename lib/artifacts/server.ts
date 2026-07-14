@@ -1,4 +1,4 @@
-import type { UIMessageStreamWriter } from "ai";
+import type { UIMessageStreamWriter } from "@/lib/ai/ai-types";
 import type { Session } from "next-auth";
 import { codeDocumentHandler } from "@/artifacts/code/server";
 import { sheetDocumentHandler } from "@/artifacts/sheet/server";

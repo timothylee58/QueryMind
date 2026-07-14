@@ -1,4 +1,4 @@
-import type { LanguageModel } from "ai";
+import type { LanguageModel } from "@/lib/ai/ai-types";
 
 const mockResponses: Record<string, string> = {
   default: "This is a mock response for testing.",
