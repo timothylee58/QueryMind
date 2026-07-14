@@ -323,7 +323,7 @@ export async function POST(request: Request) {
               system: systemPromptText,
               messages: anthropicMessages,
               tools: toolDefinitions,
-            });
+            }, { signal: request.signal });
 
             let currentText = "";
 
