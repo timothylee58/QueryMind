@@ -1,6 +1,6 @@
 "use client";
 
-import type { UseChatHelpers } from "@ai-sdk/react";
+import type { UseChatHelpers } from "@/lib/ai/ai-types";
 import { useEffect } from "react";
 import { useDataStream } from "@/components/chat/data-stream-provider";
 import type { ChatMessage } from "@/lib/types";

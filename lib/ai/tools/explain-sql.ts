@@ -1,18 +1,26 @@
-import { tool } from "ai";
-import { z } from "zod";
+export type ExplainSqlInput = { sql: string };
 
-export const explainSql = tool({
-  description:
-    "Explain what a SQL query does in plain English, identifying the tables and operations involved.",
-  inputSchema: z.object({
-    sql: z.string().describe("The SQL query to explain"),
-  }),
-  execute: async (input) => {
-    return {
-      sql: input.sql,
-      explanation: "",
-      tables: [] as string[],
-      operations: [] as string[],
-    };
+export async function executeExplainSql(input: ExplainSqlInput) {
+  return {
+    sql: input.sql,
+    explanation: "",
+    tables: [] as string[],
+    operations: [] as string[],
+  };
+}
+
+export const explainSql = {
+  definition: {
+    name: "explainSql" as const,
+    description:
+      "Explain what a SQL query does in plain English, identifying the tables and operations involved.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        sql: { type: "string", description: "The SQL query to explain" },
+      },
+      required: ["sql"],
+    },
   },
-});
+  execute: executeExplainSql,
+};

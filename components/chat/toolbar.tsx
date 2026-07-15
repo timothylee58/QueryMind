@@ -1,5 +1,5 @@
 "use client";
-import type { UseChatHelpers } from "@ai-sdk/react";
+import type { UseChatHelpers } from "@/lib/ai/ai-types";
 import cx from "classnames";
 import { motion, useMotionValue, useTransform } from "framer-motion";
 import { WrenchIcon, XIcon } from "lucide-react";

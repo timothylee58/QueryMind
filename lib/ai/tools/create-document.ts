@@ -1,6 +1,5 @@
-import { tool, type UIMessageStreamWriter } from "ai";
 import type { Session } from "next-auth";
-import { z } from "zod";
+import type { UIMessageStreamWriter } from "@/lib/ai/ai-types";
 import {
   artifactKinds,
   documentHandlersByArtifactKind,
@@ -14,52 +13,45 @@ type CreateDocumentProps = {
   modelId: string;
 };
 
-export const createDocument = ({
+export type CreateDocumentInput = {
+  title: string;
+  kind: "text" | "code" | "sheet";
+};
+
+export function createDocument({
   session,
   dataStream,
   modelId,
-}: CreateDocumentProps) =>
-  tool({
-    description:
-      "Create an artifact. You MUST specify kind: use 'code' for any programming/algorithm request (creates a script), 'text' for essays/writing (creates a document), 'sheet' for spreadsheets/data.",
-    inputSchema: z.object({
-      title: z.string().describe("The title of the artifact"),
-      kind: z
-        .enum(artifactKinds)
-        .describe(
-          "REQUIRED. 'code' for programming/algorithms, 'text' for essays/writing, 'sheet' for spreadsheets"
-        ),
-    }),
-    execute: async ({ title, kind }) => {
+}: CreateDocumentProps) {
+  return {
+    definition: {
+      name: "createDocument" as const,
+      description:
+        "Create an artifact. You MUST specify kind: use 'code' for any programming/algorithm request (creates a script), 'text' for essays/writing (creates a document), 'sheet' for spreadsheets/data.",
+      input_schema: {
+        type: "object" as const,
+        properties: {
+          title: { type: "string", description: "The title of the artifact" },
+          kind: {
+            type: "string",
+            enum: [...artifactKinds],
+            description:
+              "REQUIRED. 'code' for programming/algorithms, 'text' for essays/writing, 'sheet' for spreadsheets",
+          },
+        },
+        required: ["title", "kind"],
+      },
+    },
+    execute: async ({ title, kind }: CreateDocumentInput) => {
       const id = generateUUID();
 
-      dataStream.write({
-        type: "data-kind",
-        data: kind,
-        transient: true,
-      });
-
-      dataStream.write({
-        type: "data-id",
-        data: id,
-        transient: true,
-      });
-
-      dataStream.write({
-        type: "data-title",
-        data: title,
-        transient: true,
-      });
-
-      dataStream.write({
-        type: "data-clear",
-        data: null,
-        transient: true,
-      });
+      dataStream.write({ type: "data-kind", data: kind, transient: true });
+      dataStream.write({ type: "data-id", data: id, transient: true });
+      dataStream.write({ type: "data-title", data: title, transient: true });
+      dataStream.write({ type: "data-clear", data: null, transient: true });
 
       const documentHandler = documentHandlersByArtifactKind.find(
-        (documentHandlerByArtifactKind) =>
-          documentHandlerByArtifactKind.kind === kind
+        (h) => h.kind === kind,
       );
 
       if (!documentHandler) {
@@ -86,4 +78,5 @@ export const createDocument = ({
             : "A document was created and is now visible to the user.",
       };
     },
-  });
+  };
+}

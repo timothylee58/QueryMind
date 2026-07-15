@@ -1,6 +1,5 @@
-import { streamText } from "ai";
 import { codePrompt, updateDocumentPrompt } from "@/lib/ai/prompts";
-import { getLanguageModel } from "@/lib/ai/providers";
+import { anthropic, getLanguageModelId } from "@/lib/ai/providers";
 import { createDocumentHandler } from "@/lib/artifacts/server";
 
 function stripFences(code: string): string {
@@ -15,15 +14,19 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
   onCreateDocument: async ({ title, dataStream, modelId }) => {
     let draftContent = "";
 
-    const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+    const stream = anthropic.messages.stream({
+      model: getLanguageModelId(modelId),
+      max_tokens: 8096,
       system: `${codePrompt}\n\nOutput ONLY the code. No explanations, no markdown fences, no wrapping.`,
-      prompt: title,
+      messages: [{ role: "user", content: title }],
     });
 
-    for await (const delta of fullStream) {
-      if (delta.type === "text-delta") {
-        draftContent += delta.text;
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        draftContent += event.delta.text;
         dataStream.write({
           type: "data-codeDelta",
           data: stripFences(draftContent),
@@ -37,15 +40,19 @@ export const codeDocumentHandler = createDocumentHandler<"code">({
   onUpdateDocument: async ({ document, description, dataStream, modelId }) => {
     let draftContent = "";
 
-    const { fullStream } = streamText({
-      model: getLanguageModel(modelId),
+    const stream = anthropic.messages.stream({
+      model: getLanguageModelId(modelId),
+      max_tokens: 8096,
       system: `${updateDocumentPrompt(document.content, "code")}\n\nOutput ONLY the complete updated code. No explanations, no markdown fences, no wrapping.`,
-      prompt: description,
+      messages: [{ role: "user", content: description }],
     });
 
-    for await (const delta of fullStream) {
-      if (delta.type === "text-delta") {
-        draftContent += delta.text;
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        draftContent += event.delta.text;
         dataStream.write({
           type: "data-codeDelta",
           data: stripFences(draftContent),

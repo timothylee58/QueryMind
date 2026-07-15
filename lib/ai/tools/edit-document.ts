@@ -1,6 +1,5 @@
-import { tool, type UIMessageStreamWriter } from "ai";
 import type { Session } from "next-auth";
-import { z } from "zod";
+import type { UIMessageStreamWriter } from "@/lib/ai/ai-types";
 import { getDocumentById, saveDocument } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 
@@ -9,26 +8,45 @@ type EditDocumentProps = {
   dataStream: UIMessageStreamWriter<ChatMessage>;
 };
 
-export const editDocument = ({ session, dataStream }: EditDocumentProps) =>
-  tool({
-    description:
-      "Make a targeted edit to an existing artifact by finding and replacing an exact string. Preferred over updateDocument for small changes. The old_string must match exactly.",
-    inputSchema: z.object({
-      id: z.string().describe("The ID of the artifact to edit"),
-      old_string: z
-        .string()
-        .describe(
-          "Exact string to find. Include 3-5 surrounding lines for uniqueness."
-        ),
-      new_string: z.string().describe("Replacement string"),
-      replace_all: z
-        .boolean()
-        .optional()
-        .describe(
-          "Replace all occurrences instead of just the first (default false)"
-        ),
-    }),
-    execute: async ({ id, old_string, new_string, replace_all }) => {
+export type EditDocumentInput = {
+  id: string;
+  old_string: string;
+  new_string: string;
+  replace_all?: boolean;
+};
+
+export function editDocument({ session, dataStream }: EditDocumentProps) {
+  return {
+    definition: {
+      name: "editDocument" as const,
+      description:
+        "Make a targeted edit to an existing artifact by finding and replacing an exact string. Preferred over updateDocument for small changes. The old_string must match exactly.",
+      input_schema: {
+        type: "object" as const,
+        properties: {
+          id: {
+            type: "string",
+            description: "The ID of the artifact to edit",
+          },
+          old_string: {
+            type: "string",
+            description:
+              "Exact string to find. Include 3-5 surrounding lines for uniqueness.",
+          },
+          new_string: {
+            type: "string",
+            description: "Replacement string",
+          },
+          replace_all: {
+            type: "boolean",
+            description:
+              "Replace all occurrences instead of just the first (default false)",
+          },
+        },
+        required: ["id", "old_string", "new_string"],
+      },
+    },
+    execute: async ({ id, old_string, new_string, replace_all }: EditDocumentInput) => {
       const document = await getDocumentById({ id });
 
       if (!document) {
@@ -59,11 +77,7 @@ export const editDocument = ({ session, dataStream }: EditDocumentProps) =>
         userId: document.userId,
       });
 
-      dataStream.write({
-        type: "data-clear",
-        data: null,
-        transient: true,
-      });
+      dataStream.write({ type: "data-clear", data: null, transient: true });
 
       if (document.kind === "code") {
         dataStream.write({
@@ -97,4 +111,5 @@ export const editDocument = ({ session, dataStream }: EditDocumentProps) =>
             : "The document has been edited successfully.",
       };
     },
-  });
+  };
+}
